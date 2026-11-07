@@ -1,0 +1,27 @@
+rules_version = '2';
+// Paste this in Firebase Console → Firestore Database → Rules → Publish
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Profile (plan, Pro, message count): student can READ only.
+    // Only our server (Admin SDK) can change it, so nobody can make himself Pro.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+
+      // Student manages his own courses and ticks his sessions
+      match /courses/{id}  { allow read, write: if isOwner(uid); }
+      match /sessions/{id} { allow read, write: if isOwner(uid); }
+
+      // Written by the server (upload + AI agent), the student only reads / deletes
+      match /files/{id}  { allow read, delete: if isOwner(uid); }
+      match /topics/{id} { allow read, delete: if isOwner(uid); }
+      match /chat/{id}   { allow read: if isOwner(uid); }
+    }
+
+  }
+}
